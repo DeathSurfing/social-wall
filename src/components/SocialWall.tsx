@@ -1,7 +1,15 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import posts from '../data/posts.json';
+import rawPosts from '../data/posts.json' assert { type: "json" };
+
+type Post = {
+  extraction_date: string;
+  platform: string;
+  url: string;
+};
+
+const posts = rawPosts as Post[];
 
 const InstagramEmbed = dynamic(
   () => import('react-social-media-embed').then((mod) => mod.InstagramEmbed),
@@ -16,7 +24,6 @@ const LinkedInEmbed = dynamic(
   { ssr: false }
 );
 
-// Render embeds for all platforms without URL sanitization
 const getEmbed = (platform: string, url: string) => {
   switch (platform.toLowerCase()) {
     case 'instagram':
@@ -32,14 +39,12 @@ const getEmbed = (platform: string, url: string) => {
 
 export default function SocialWall() {
   const chunkSize = 9;
+  const groups: Post[][] = [];
 
-  // Divide posts into 3x3 groups
-  const groups: typeof posts[][] = [];
   for (let i = 0; i < posts.length; i += chunkSize) {
     groups.push(posts.slice(i, i + chunkSize));
   }
 
-  // Duplicate groups for infinite scroll
   const loopedGroups = [...groups, ...groups];
 
   return (
