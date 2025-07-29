@@ -1,6 +1,5 @@
 'use client';
 
-import dynamic from 'next/dynamic';
 import rawPosts from '../data/posts.json' assert { type: "json" };
 
 type Post = {
@@ -11,31 +10,9 @@ type Post = {
 
 const posts = rawPosts as Post[];
 
-const InstagramEmbed = dynamic(
-  () => import('react-social-media-embed').then((mod) => mod.InstagramEmbed),
-  { ssr: false }
-);
-const FacebookEmbed = dynamic(
-  () => import('react-social-media-embed').then((mod) => mod.FacebookEmbed),
-  { ssr: false }
-);
-const LinkedInEmbed = dynamic(
-  () => import('react-social-media-embed').then((mod) => mod.LinkedInEmbed),
-  { ssr: false }
-);
-
-const getEmbed = (platform: string, url: string) => {
-  switch (platform.toLowerCase()) {
-    case 'instagram':
-      return <InstagramEmbed url={url} width={300} />;
-    case 'facebook':
-      return <FacebookEmbed url={url} width={300} />;
-    case 'linkedin':
-      return <LinkedInEmbed url={url} width={300} height={400} />;
-    default:
-      return null;
-  }
-};
+// Helper: Generate screenshot path from post info
+const getScreenshotPath = (platform: string, date: string) =>
+  `/posts/${platform.toLowerCase()}_${date}.webp`;
 
 export default function SocialWall() {
   const chunkSize = 9;
@@ -66,7 +43,11 @@ export default function SocialWall() {
                 key={`${idx}-${index}`}
                 className="bg-white rounded-xl shadow flex items-center justify-center p-2 overflow-hidden"
               >
-                {getEmbed(post.platform, post.url)}
+                <img
+                  src={getScreenshotPath(post.platform, post.extraction_date)}
+                  alt={`${post.platform} post from ${post.extraction_date}`}
+                  className="object-contain max-h-full max-w-full rounded"
+                />
               </div>
             ))}
           </div>
