@@ -2,52 +2,52 @@ const puppeteer = require("puppeteer");
 const fs = require("fs");
 const path = require("path");
 
+// Load all posts from JSON
+const jsonPath = path.resolve(__dirname, "src/data/posts.json");
+const posts = JSON.parse(fs.readFileSync(jsonPath, "utf-8"));
+
+// Ensure output directory exists
+const outputDir = path.resolve(__dirname, "public/posts");
+if (!fs.existsSync(outputDir)) {
+  fs.mkdirSync(outputDir, { recursive: true });
+}
+
 (async () => {
-  // Load post.json
-  const jsonPath = path.resolve(__dirname, "../src/data/post.json");
-  const data = JSON.parse(fs.readFileSync(jsonPath, "utf-8"));
-
-  const { extraction_date, platform, url } = data;
-
-  // Create output directory if it doesn't exist
-  const outputDir = path.resolve(__dirname, "posts");
-  if (!fs.existsSync(outputDir)) {
-    fs.mkdirSync(outputDir);
-  }
-
-  // Launch Puppeteer
   const browser = await puppeteer.launch({ headless: "new" });
-  const page = await browser.newPage();
 
-  // Set a larger viewport for Instagram embeds
-  await page.setViewport({ width: 800, height: 1000 });
+  for (const post of posts) {
+    const { extraction_date, platform, url } = post;
 
-  // Go to the embed URL
-  await page.goto(url, { waitUntil: "networkidle2", timeout: 60000 });
+    const page = await browser.newPage();
+    await page.setViewport({ width: 800, height: 1000 });
 
-  // Wait for the Instagram embed to render
-  await page.waitForSelector("iframe");
+    console.log(`📸 Capturing ${platform} post from ${url}`);
 
-  // Instagram embeds are inside an iframe
-  const frameHandle = await page.$("iframe");
-  const frame = await frameHandle.contentFrame();
+    try {
+      await page.goto(url, { waitUntil: "networkidle2", timeout: 60000 });
+      await page.waitForSelector("iframe", { timeout: 15000 });
 
-  // Wait for the post content to load in the iframe
-  await frame.waitForSelector("article", { timeout: 30000 });
+      const frameHandle = await page.$("iframe");
+      const frame = await frameHandle.contentFrame();
 
-  // Take screenshot of the iframe content
-  const postElement = await frame.$("article");
-  const screenshotPath = path.resolve(
-    outputDir,
-    `instagram_${extraction_date}.webp`
-  );
+      await frame.waitForSelector("article", { timeout: 20000 });
+      const postElement = await frame.$("article");
 
-  await postElement.screenshot({
-    path: screenshotPath,
-    type: "webp",
-  });
+      const filename = `${platform.toLowerCase()}_${extraction_date}.webp`;
+      const outputPath = path.resolve(outputDir, filename);
 
-  console.log(`✅ Screenshot saved to ${screenshotPath}`);
+      await postElement.screenshot({
+        path: outputPath,
+        type: "webp",
+      });
+
+      console.log(`✅ Saved to ${outputPath}`);
+    } catch (err) {
+      console.error(`❌ Failed to capture ${url}:`, err.message);
+    } finally {
+      await page.close();
+    }
+  }
 
   await browser.close();
 })();
